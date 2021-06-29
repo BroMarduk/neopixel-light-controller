@@ -1,3 +1,4 @@
+#!/usr/bin/python
 # SPDX-FileCopyrightText: 2021 Dan Begallie
 # SPDX-License-Identifier: MIT
 
@@ -5,15 +6,21 @@
 # is used to indicate status while the strip is used for lighting.  This is controlled
 # by a rotary encoder.  Pushing the encoder changes the color, rotating changes between
 # one of 16 levels of brightness.
+
+##################################################################################
+# IMPORTS
+##################################################################################
 import argparse
 import fcntl
 import logging
 import os
+import signal
 import sys
 import time
 import board
 import evdev
 import neopixel
+from nplcolors import *
 
 ##################################################################################
 # IS ROOT METHOD
@@ -35,13 +42,13 @@ try:
 except IOError:
     sys.exit(-1)
 
-
 ##################################################################################
-# SHUTDOWN METHOD
+# ON SHUTDOWN CALLBACK
 ##################################################################################
-# Method to clean up and shutdown the application.
+# Callback method from a signal to shutdown the app.
 ##################################################################################
-def shutdown():
+def on_shutdown(signum, frame):
+    logger.debug("Shutdown Signal Received.  Signum:{0}, Frame:{1}".format(signum, frame))
     # Turn off all lights.
     if strip:
         strip.deinit()
@@ -84,7 +91,12 @@ def rainbow(pos):
         b = b - ((b // 5) * brightness)
     return (r, g, b) if ORDER in (neopixel.RGB, neopixel.GRB) else (r, g, b, 0)
 
+# Add signals for shutdown from OS
+signal.signal(signal.SIG_IGN, on_shutdown)
+signal.signal(signal.SIGINT, on_shutdown)
+signal.signal(signal.SIGTERM, on_shutdown)
 
+# Configure Logging
 logger = logging.getLogger("npl-controller")
 logger.setLevel(logging.DEBUG)
 
@@ -112,33 +124,6 @@ stream_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
-WHITE = (255, 255, 255)
-MAGENTA = (255, 0, 51)
-PINK = (255, 51, 119)
-RED = (255, 0, 0)
-ORANGE = (255, 34, 0)
-YELLOW = (255, 170, 0)
-GREEN = (0, 255, 0)
-CYAN = (0, 255, 255)
-AQUA = (85, 125, 255)
-BLUE = (0, 0, 255)
-VIOLET = (153, 0, 255)
-BLACK = (0, 0, 0)
-RAINBOW = (0, 0, 1)
-
-colors = [WHITE,
-          MAGENTA,
-          PINK,
-          RED,
-          ORANGE,
-          YELLOW,
-          GREEN,
-          CYAN,
-          AQUA,
-          BLUE,
-          VIOLET,
-          RAINBOW]
-
 # Choose an open pin connected to the Data In of the NeoPixel strip, i.e. board.D18
 # NeoPixels must be connected to D10, D12, D18 or D21 to work.
 strip_pin = board.D18
@@ -150,9 +135,9 @@ num_pixels_ring = 16
 
 brightness = 1
 new_brightness = 1
-color = BLACK
-new_color = WHITE
-old_color = BLACK
+color = NeopixelColors.BLACK
+new_color = NeopixelColors.WHITE
+old_color = NeopixelColors.BLACK
 ORDER = neopixel.GRB
 down_key = 0
 value = 0
@@ -162,12 +147,13 @@ ring = neopixel.NeoPixel(ring_pin, num_pixels_ring, brightness=1.0, auto_write=F
 dev_rotary = evdev.InputDevice('/dev/input/by-path/platform-rotary@4-event')
 dev_button = evdev.InputDevice('/dev/input/by-path/platform-button@1b-event')
 
+
 try:
     while True:
         if new_color != color or new_brightness != brightness:
             color = new_color
             brightness = new_brightness
-            if new_color == RAINBOW:
+            if new_color == NeopixelColors.RAINBOW:
                 for si in range(num_pixels_strip):
                     strip_index = (si * 256 // num_pixels_strip)
                     strip[si] = rainbow(strip_index & 255)
@@ -194,7 +180,7 @@ try:
                     value = 0
                 if value < 0:
                     value = 11
-                new_color = colors[value]
+                new_color = NeopixelColors.colors[value]
             elif brightness == 0 and rel_event.type == evdev.ecodes.EV_REL:
                 brightness = 1
                 new_color = old_color
@@ -208,7 +194,7 @@ try:
                     if down_key + 750 < time.time() * 1000:
                         brightness = 0
                         old_color = new_color
-                        new_color = BLACK
+                        new_color = NeopixelColors.BLACK
                     else:
                         new_brightness = brightness + 1
                         if new_brightness > 4:
@@ -217,5 +203,3 @@ try:
 except (KeyboardInterrupt, SystemExit):
     # Keeps error from displaying when CTL-C is pressed
     print(""),
-
-shutdown()
