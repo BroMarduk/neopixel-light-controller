@@ -133,6 +133,7 @@ ring_pin = board.D21
 num_pixels_strip = 30
 num_pixels_ring = 16
 
+# Default values
 brightness = 1
 new_brightness = 1
 color = NeopixelColors.BLACK
@@ -142,11 +143,11 @@ ORDER = neopixel.GRB
 down_key = 0
 value = 0
 
+# Devices
 strip = neopixel.NeoPixel(strip_pin, num_pixels_strip, brightness=1.0, auto_write=False, pixel_order=ORDER)
 ring = neopixel.NeoPixel(ring_pin, num_pixels_ring, brightness=1.0, auto_write=False, pixel_order=ORDER)
 dev_rotary = evdev.InputDevice('/dev/input/by-path/platform-rotary@4-event')
 dev_button = evdev.InputDevice('/dev/input/by-path/platform-button@1b-event')
-
 
 try:
     while True:
